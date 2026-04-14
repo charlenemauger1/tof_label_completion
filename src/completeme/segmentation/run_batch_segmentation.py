@@ -12,12 +12,14 @@ from monai.networks.nets import DynUNet
 from collections import defaultdict
 from tqdm import tqdm
 
-# Assuming task_params.py exists and defines deep_supr_num
-from dynunet.models.task_params import deep_supr_num
+from completeme.segmentation.models.create_network import get_kernels_strides, get_network
+from completeme.segmentation.models.task_params import patch_size, spacing, deep_supr_num
+from completeme import DYNUNET_CHECKPOINT_DIR, DYNUNET_N_FOLDS
 
-# Assuming create_network.py exists and defines get_kernels_strides
-from dynunet.models.create_network import get_kernels_strides
-from dynunet.models.task_params import patch_size, spacing
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="monai.inferers.utils")
+
+
 # --- Mappings ---
 TERM_MAPPING = {
     "SA": "SA",
@@ -25,7 +27,7 @@ TERM_MAPPING = {
     "RT": "2Ch_RT",
     "3CH": "3Ch",
     "4CH": "4Ch",
-    "RVOT": "RVOT"
+    "RVOT": "RVOT",
 }
 
 TASK_MAPPING = {
@@ -55,47 +57,73 @@ CLASS_MAPPING = {
     "2Ch_RT": 3,
 }
 
-from dynunet.data_preprocessing.preprocessing_params import (
-    N_FOLDS, 
-)
-
-from dynunet.models.create_network import get_network
-# --- Helper Functions ---
 def identify_view_from_path(file_path: Path):
-    """Identify view classification from file name."""
-    for key in TERM_MAPPING:
-        #print(key, TERM_MAPPING[key])
+    """
+    Identify the CMR view type from a file path by matching known keywords.
+
+    Iterates over TERM_MAPPING, which maps filename keywords (e.g. 'SA', '4CH', 'RVOT')
+    to their corresponding view labels. Returns the first match found, or None if
+    no recognised keyword is present in the filename.
+
+    Args:
+        file_path (Path): Path to the NIfTI file.
+
+    Returns:
+        str or None: The view label (e.g. 'SAX', '4CH') if a keyword is matched,
+                     or None if the filename does not contain any recognised keyword.
+    """
+    for key in TERM_MAPPING:     
         if key in str(file_path):
             return TERM_MAPPING[key]
     return None
 
 def get_network(n_class: int, task_id: str, pretrain_path: Path, checkpoint: str):
-    """Initializes and loads a DynUNet model."""
+    """
+    Initialise a DynUNet model and load pretrained weights from a checkpoint.
+
+    Builds a 2D DynUNet with architecture parameters (kernel sizes, strides, deep
+    supervision depth) derived from the task ID, then loads weights from the specified
+    checkpoint file. Returns None if the checkpoint file is not found.
+
+    Args:
+        n_class (int): Number of output segmentation classes.
+        task_id (str): Task identifier used to look up kernel sizes, strides, and
+                       deep supervision depth (e.g. 'SAX', '4CH').
+        pretrain_path (Path): Directory containing the checkpoint file.
+        checkpoint (str): Filename of the checkpoint to load.
+
+    Returns:
+        DynUNet or None: The initialised network with loaded weights, or None if
+                         the checkpoint file does not exist.
+    """
+
+    # Retrieve architecture parameters for this task
     kernels, strides = get_kernels_strides(task_id)
-    
+
+    # Build the 2D DynUNet with instance normalisation and deep supervision
     net = DynUNet(
         spatial_dims=2,
         in_channels=1,
         out_channels=n_class,
         kernel_size=kernels,
         strides=strides,
-        upsample_kernel_size=strides[1:],
+        upsample_kernel_size=strides[1:],  # Upsample strides skip the first (input) stride
         norm_name="instance",
         deep_supervision=True,
         deep_supr_num=deep_supr_num[task_id],
     )
-    
+
+    # Load pretrained weights if checkpoint exists
     checkpoint_path = pretrain_path / checkpoint
-    
     if checkpoint_path.exists():
         net.load_state_dict(torch.load(checkpoint_path, weights_only=True))
     else:
         logger.error(f"No pretrained checkpoint found at {checkpoint_path}")
         return None
-    
+
     return net
 
-def load_models_for_view(image_view: str, path_to_checkpoints: Path, folds: int = N_FOLDS):
+def load_models_for_view(image_view: str, path_to_checkpoints: Path, folds: int = DYNUNET_N_FOLDS):
     """
     Loads a collection of pre-trained models for a specific anatomical view.
 
@@ -155,47 +183,55 @@ def load_models_for_view(image_view: str, path_to_checkpoints: Path, folds: int 
     return models, n_class, task_id
 
 def run_inference_on_file(nifti_file: Path, segmentation_folder: Path, preloaded_networks: list, num_classes: int, task_id: int):
-    """Performs inference on a single NIfTI file using pre-loaded models."""
+    """
+    Run segmentation inference on a single NIfTI file using preloaded DynUNet models.
+
+    Identifies the CMR view from the file path, configures the MONAI bundle for that
+    view, runs inference using the preloaded networks, and saves the output segmentation
+    mask as a uint8 NIfTI file.
+
+    Args:
+        nifti_file (Path): Path to the input 2D+t NIfTI CMR file.
+        segmentation_folder (Path): Directory where the output segmentation mask will be saved.
+        preloaded_networks (list): List of preloaded DynUNet models (5-fold ensemble).
+        num_classes (int): Number of segmentation classes for this view.
+        task_id (int): Task identifier used to look up patch size and spacing parameters.
+
+    Returns:
+        None. Saves the segmentation mask to disk as a uint8 NIfTI file.
+    """
+    # Resolve the parent folder and identify the CMR view from the file path
     patient_folder = nifti_file.resolve().parent
+
     image_view = identify_view_from_path(patient_folder / nifti_file)
-    
     if not image_view:
         logger.error(f"Could not identify view for file: {nifti_file}")
         return
-        
+
+    # Locate the MONAI bundle for this view and add its scripts to the Python path
     bundle_root = os.path.abspath(os.path.join(__file__, "../monaibundle/model", image_view))
     sys.path.append(os.path.join(bundle_root))
     sys.path.append(os.path.join(bundle_root, "scripts"))
 
-    try: 
+    try:
+    # Load bundle metadata and inference configuration
         cp = ConfigParser()
         cp.read_meta(f"{bundle_root}/configs/metadata.json")
         cp.read_config(f"{bundle_root}/configs/inference.json")
+
+        # Override bundle config with runtime parameters
         cp['bundle_root'] = bundle_root
         cp['dataset_dir'] = patient_folder
-        cp['datadicts'] = [{'image': nifti_file}]
+        cp['datadicts'] = [{'image': nifti_file}]  # Single file inference
         cp['output_dir'] = Path(segmentation_folder, os.path.basename(patient_folder))
         cp['num_classes'] = num_classes
-        cp['evaluator']["networks"] = preloaded_networks
+        cp['evaluator']["networks"] = preloaded_networks  # Inject preloaded ensemble
         cp['args']["patch_size"] = patch_size[task_id]
         cp['args']["spacing"] = spacing[task_id]
-    
-        #try:
+
+        # Run inference
         evaluator = cp.get_parsed_content("evaluator")
         evaluator.run()
-        
-        # Post-processing: ensure output is in correct format (e.g., uint8)
-        print(segmentation_folder)
-        output_path_seg = segmentation_folder / nifti_file.name
-        
-        if output_path_seg.exists():
-            image = nib.load(output_path_seg)
-            new_nifti = image.get_fdata()
-            img_nii = nib.Nifti1Image(new_nifti.astype(np.uint8), image.affine)
-            nib.save(img_nii, output_path_seg)
-            logger.info(f"Successfully processed and saved segmentation for {nifti_file.name}")
-        else:
-            logger.error(f"Inference did not produce an output file at {output_path_seg}")
 
     except Exception as e:
         logger.exception(f"Error processing {nifti_file}: {e}")
@@ -207,8 +243,6 @@ if __name__ == "__main__":
                         help='Base directory containing Nifti files')
     parser.add_argument('-o', '--output_folder', type=str, required=True,
                         help='Output folder')
-    parser.add_argument('-ckpt', '--path_to_checkpoints', type=str, default="./monaibundle/checkpoints",
-                        help='Path to checkpoints')
     parser.add_argument('-log', action="store_true", help="Print log in the console")
     
     args = parser.parse_args()
@@ -253,10 +287,13 @@ if __name__ == "__main__":
 
     # --- Step 2: Process each view sequentially ---
     for image_view, file_list in files_by_view.items():
+
+
         logger.info(f"--- Starting inference for view: '{image_view}' with {len(file_list)} files ---")
-        
+
+              
         # Load models for the current view once
-        models_data = load_models_for_view(image_view, Path(args.path_to_checkpoints))
+        models_data = load_models_for_view(image_view, Path(DYNUNET_CHECKPOINT_DIR))
 
         if not models_data:
             logger.error(f"Failed to load models for view '{image_view}'. Skipping inference for this view.")

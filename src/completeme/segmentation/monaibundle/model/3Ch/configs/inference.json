@@ -89,7 +89,7 @@
         "keys": "@pred",
         "data_root_dir": "@dataset_dir",
         "output_dir": "@output_dir",
-        "output_dtype": "$None",
+        "output_dtype": "$np.uint8",
         "output_postfix": "",
         "dtype": "$None",
         "resample": true,
@@ -127,7 +127,7 @@
       "mode": "gaussian"
     },
     "evaluator": {
-      "_target_": "dynunet.training.evaluator.DynUNetEnsembleEvaluator",
+      "_target_": "completeme.segmentation.models.evaluator.DynUNetEnsembleEvaluator",
       "device": "@device",
       "val_data_loader": "@test_dataloader",
       "num_classes": "@num_classes",

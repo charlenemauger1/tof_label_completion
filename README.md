@@ -6,9 +6,9 @@ A two-stage deep learning pipeline for reconstructing dense 3D whole-heart segme
 ## Table of Contents
 - [**Pipeline**](#pipeline-overview)
 - [**Installation**](#installation-guide)
-- [**Generating dense segmentation from sparse nifti**](#how-to-run-complete-me)
-    - [Example usage](#example-usage)
-    - [Generate segmentation mask from sparse nifti](#generate-segmentation-from-sparse-nifti)
+- [**Generating dense segmentation from sparse nifti**](#how-to-run-the-pipline)
+    - [Example usage - full pipeline](#example-usage)
+    - [Generate segmentation masks from sparse nifti](#generate-segmentations-from-sparse-nifti)
     - [Generate dense segmentation from sparse segmentation mask](#generate-dense-segmentation-from-sparse-segmentation-mask)
 - [**Contact**](#contact) 
 
@@ -89,21 +89,50 @@ pip install -e .
 ### Step 4: Download Pretrained Models
 All model checkpoints are available on Hugging Face: [charlenemauger1/complete-me](https://huggingface.co/charlenemauger1/complete-me)
 
-The repository contains two folders:
-- `dynUnet_segmentation/` — 5-fold ensemble checkpoints for each CMR view
-- `label_completion/` — label completion network checkpoint
-
 To download the pretrained weights:
 
 ```python
 python download_pretrained_weights.py
 ```
 
+This script downloads the pretrained model checkpoints from Hugging Face into the exact directory structure expected by the pipeline — segmentation models into `src/completeme/segmentation/checkpoints/` and the label completion network into `src/completeme/label_completion/checkpoints/`.  
+
 ### Step 5: Install PyTorch
-This project requires PyTorch, which is not included in the default `completeme-311` environment. Visit the [**iPyTorch installation page**](https://pytorch.org/get-started/locally/) and follow the instructions for your GPU and operating system.
+This project requires PyTorch, which is not included in the default `completeme-311` environment. Visit the [**PyTorch installation page**](https://pytorch.org/get-started/locally/) and follow the instructions for your GPU and operating system.
 
 
 
+## How to run the pipeline
+
+
+
+## Generate segmentations from sparse nifti
+
+`run_batch_segmentation.py` runs the segmentation network on CMR NIfTI images and outputs segmentation masks. It automatically selects the correct model based on the view keyword in the filename (`SA`, `4CH`, `2CH_LT`, `2CH_RT`, `3CH`, `RVOT`).
+Each `.nii.gz` is a 2D+t cine volume (x, y, time frames). The short-axis stack has one file per slice position. Input files should be organised as follows:
+
+```bash
+input_folder/
+    ├── patient_001/
+    │   ├── *SA*.nii.gz        # required
+    │   ├── *SA*.nii.gz        # optional
+    │   ├── *SA*.nii.gz        # optional
+    │   ├── [...]              # optional    
+    │   ├── *4CH*.nii.gz       # required
+    │   ├── *2CH_LT*.nii.gz    # optional
+    │   ├── *2CH_RT*.nii.gz    # optional
+    │   ├── *3CH*.nii.gz       # optional
+    │   └── *RVOT*.nii.gz      # optional
+    ├── patient_002/
+    │   └── ...
+```
+
+To run the segmentation network on the provided example, run the following command
+```bash
+python ./src/completeme/segmentation/run_batch_segmentation.py -b ./example/nifti/ -o ./tof_mask
+```
+
+The resulting segmentations should be idnetiical to the one in the `./example/segmented-nifti/`
 
 ## Contribution - Notation
 
