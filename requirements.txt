@@ -1,0 +1,16 @@
+numpy==2.2.3
+pydicom==3.0.1
+nibabel==5.3.2
+matplotlib==3.10.0
+scipy==1.16.0
+tqdm==4.67.1
+loguru==0.7.3
+rich==13.9.4
+scikit-image==0.25.2
+SimpleITK==2.4.1
+pandas==2.2.3
+pyyaml==6.0.2
+edt==2.4.1
+torchio==0.20.4
+attrdict==2.0.1
+huggingface_hub==1.10.2

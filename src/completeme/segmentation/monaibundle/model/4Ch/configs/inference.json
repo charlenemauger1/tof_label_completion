@@ -1,0 +1,141 @@
+{
+    "imports": [
+      "$import torch",
+      "$import os",
+      "$import glob"
+    ],
+    "image": "$monai.utils.CommonKeys.IMAGE",
+    "pred": "$monai.utils.CommonKeys.PRED",
+    "batch_size": 1,
+    "num_workers": 4,
+    "args": {
+      "patch_size": [256, 224],
+      "spacing": [1.328125, 1.328125] 
+    },
+    "dataset_dir": "./datasets/CAP",
+    "output_dir": "./datasets/CAP/test_results",
+    "series_num": 0,
+    "num_classes": 7,
+    "datadicts": "$[{@image: i} for i in glob.glob(@dataset_dir + '/' + @series_num + '*.seq.nrrd')]",
+    "bundle_root": ".",
+    "device": "$torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')",
+    "network_def": {
+      "_target_": "DynUNet",
+      "spatial_dims": 2,
+      "in_channels": 1,
+      "out_channels": "@num_classes",
+      "kernel_size": [[3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3]],
+      "strides": [[1, 1], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 1]],
+      "upsample_kernel_size": [[2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 1]],
+      "norm_name": "instance",
+      "deep_supervision": true,
+      "deep_supr_num": 3
+    },
+    "network": "$@network_def.to(@device)",
+    "infer_transforms": [
+      {
+        "_target_": "LoadImaged",
+        "keys": "@image",
+        "ensure_channel_first": true,
+        "image_only": true
+      },
+      {
+        "_target_": "Spacingd",
+        "keys": "@image",
+        "pixdim": "$(*@args::spacing, -1)",
+        "mode": "bilinear",
+        "align_corners": true
+      },
+      {
+        "_target_": "ScaleIntensityd",
+        "keys": "@image",
+        "channel_wise": true
+      },
+      {
+        "_target_": "EnsureTyped",
+        "keys": "@image",
+        "data_type": "tensor",
+        "dtype": "float32"
+      }
+    ],
+    "post_transforms": [
+      {
+        "_target_": "MeanEnsembled",
+        "keys": ["pred0", "pred1", "pred2", "pred3", "pred4"],
+        "output_key": "@pred"
+      },
+      {
+        "_target_": "AsDiscreted",
+        "keys": "@pred",
+        "argmax": true
+      },
+      {
+        "_target_": "Invertd",
+        "keys": "@pred",
+        "transform": "@preprocessing"
+      },
+      {
+        "_target_": "KeepLargestConnectedComponentd",
+        "keys": "@pred",
+        "is_onehot": false
+      },
+      {
+        "_target_": "RemoveSmallObjectsd",
+        "keys": "@pred",
+        "min_size": 64
+      },
+      {
+        "_target_": "SaveImaged",
+        "keys": "@pred",
+        "data_root_dir": "@dataset_dir",
+        "output_dir": "@output_dir",
+        "output_dtype": "$None",
+        "output_postfix": "",
+        "dtype": "$None",
+        "resample": true,
+        "squeeze_end_dims": false,
+        "separate_folder": false
+      }
+    ],
+    "preprocessing": {
+      "_target_": "Compose",
+      "transforms": "@infer_transforms"
+    },
+    "postprocessing": {
+      "_target_": "Compose",
+      "transforms": "@post_transforms"
+    },
+    "test_dataloader": {
+      "_target_": "DataLoader",
+      "dataset": "@test_dataset",
+      "batch_size": "@batch_size",
+      "num_workers": "@num_workers",
+      "shuffle": false
+    },
+    "test_dataset": {
+      "_target_": "CacheDataset",
+      "data": "@datadicts",
+      "transform": "@preprocessing",
+      "num_workers": "@num_workers"
+    },
+    "inferer": {
+      "_target_": "SliceInferer",
+      "spatial_dim": 2,
+      "roi_size": "@args::patch_size",
+      "sw_batch_size": 4,
+      "overlap": 0.5,
+      "mode": "gaussian"
+    },
+    "evaluator": {
+      "_target_": "dynunet.training.evaluator.DynUNetEnsembleEvaluator",
+      "device": "@device",
+      "val_data_loader": "@test_dataloader",
+      "num_classes": "@num_classes",
+      "networks": "@network",
+      "pred_keys": ["pred0", "pred1", "pred2", "pred3", "pred4"],
+      "inferer": "@inferer",
+      "postprocessing": "@postprocessing",
+      "amp": true
+    },
+    "inference": "$@evaluator.run()"
+  }
