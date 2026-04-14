@@ -2,7 +2,6 @@
 
 A two-stage deep learning pipeline for reconstructing dense 3D whole-heart segmentations from sparse 2D cine CMR images in repaired Tetralogy of Fallot (rToF) patients.
 
-
 ## Table of Contents
 - [**Pipeline**](#pipeline-overview)
 - [**Installation**](#installation-guide)
@@ -20,7 +19,7 @@ For a detailed description of this pipeline, please refer to:
 For a detailed description regarding the label completion, please refer to:
 
     Yiyang et al.
-
+ add link to yiyang's repo
 Depending on how you use this repo, please cite the relevant publication(s) above.
 
 
@@ -132,23 +131,7 @@ To run the segmentation network on the provided example, run the following comma
 python ./src/completeme/segmentation/run_batch_segmentation.py -b ./example/nifti/ -o ./tof_mask
 ```
 
-The resulting segmentations should be idnetiical to the one in the `./example/segmented-nifti/`
-
-## Contribution - Notation
-
-If you wish to contribute to this project, please follow the naming conventions outlined below:
-
-| **Category**         | **Naming Convention**                                               | **Example**                                               |
-|----------------------|---------------------------------------------------------------------|-----------------------------------------------------------|
-| **Variable**         | Lowercase letters, words separated by underscores (snake_case)      | `site_name` instead of `sitename`                         |
-| **Function/Method**  | Lowercase letters, words separated by underscores (snake_case)      | `def my_function()` instead of `def MyFunction()`          |
-| **Constant**         | Uppercase letters, words separated by underscores                   | `MY_CONSTANT = 3.1416` instead of `MYCONSTANT = 3.1416`    |
-| **Class**            | CamelCase                                                          | `class MyClass:` instead of `class myclass:`               |
-| **Package/Module**   | No underscores or hyphens, consistent with Python standard library | `mypackage` instead of `my_package_name_with_underscores`  |
-| **Type Variable**    | CamelCase with a leading capital letter                             | `Dict[int, str]` instead of `dict[int, str]`               |
-| **Exception**        | Ends with “Error” suffix                                           | `class MyCustomExceptionError:` instead of `class MyCustomException:` |
-| **Characters**       | Stick to ASCII characters                                          | `count = 42` instead of `ç = 42`                           |
-| **Type Hints**       | Always use type hints for code readability                          | `def greet(name: str) -> str:` instead of `def greet(name):` |
+The resulting segmentations should be identical to the ones in the `./example/segmented-nifti/`.
 
 ## Contact
 For questions or issues, please open an issue on GitHub or contact [charlene.1.mauger@kcl.ac.uk](charlene.1.mauger@kcl.ac.uk) 
