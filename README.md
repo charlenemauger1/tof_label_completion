@@ -2,26 +2,35 @@
 
 A two-stage deep learning pipeline for reconstructing dense 3D whole-heart segmentations from sparse 2D cine CMR images in repaired Tetralogy of Fallot (rToF) patients.
 
+The label completion logic in this repository is adapted from the original implementation found at [XESchong/label_completion_pipeline](https://github.com/XESchong/label_completion_pipeline)
+
+Key updates in this version include:
+- ToF Compatibility: Retrained weights specifically for Tetralogy of Fallot pathologies.\
+- Expanded Label Set: Support for additional cardiac structures beyond the original implementation.\
+- Handle highly sparse cardiac segmentations
+
+
 ## Table of Contents
 - [**Pipeline**](#pipeline-overview)
 - [**Installation**](#installation-guide)
 - [**Generating dense segmentation from sparse nifti**](#how-to-run-the-pipline)
     - [Example usage - full pipeline](#example-usage)
     - [Generate segmentation masks from sparse nifti](#generate-segmentations-from-sparse-nifti)
-    - [Generate dense segmentation from sparse segmentation mask](#generate-dense-segmentation-from-sparse-segmentation-mask)
+    - [Generate dense volumes from sparse segmentations](#generate-dense-volumes-from-sparse-segmentations)
 - [**Contact**](#contact) 
 
+If you use this code for your research, please cite the following publications:
 
-For a detailed description of this pipeline, please refer to:
+**1. Main Pipeline & Results**\
+For a detailed description of this pipeline and the results presented in the paper:
 
-    Mauger et al.
 
-For a detailed description regarding the label completion, please refer to:
+    Mauger, Charlene et al. "Filling the Gaps: Generating 4D Dense Cardiac Anatomy from Sparse CMR for Enhanced Tetralogy of Fallot Assessment" *In review*.
 
-    Yiyang et al.
- add link to yiyang's repo
-Depending on how you use this repo, please cite the relevant publication(s) above.
+**2. Label Completion Architecture**\
+For the methodology regarding the underlying 3D label completion architecture:
 
+    Xu, Yiyang, et al. "Improved 3D whole heart geometry from sparse CMR slices." International Workshop on Statistical Atlases and Computational Models of the Heart. Cham: Springer Nature Switzerland, 2024.
 
 ## Pipeline Overview
 
@@ -103,9 +112,9 @@ This project requires PyTorch, which is not included in the default `completeme-
 
 ## How to run the pipeline
 
+### End-to-end pipeline
 
-
-## Generate segmentations from sparse nifti
+### Generate segmentations from sparse nifti
 
 `run_batch_segmentation.py` runs the segmentation network on CMR NIfTI images and outputs segmentation masks. It automatically selects the correct model based on the view keyword in the filename (`SA`, `4CH`, `2CH_LT`, `2CH_RT`, `3CH`, `RVOT`).
 Each `.nii.gz` is a 2D+t cine volume (x, y, time frames). The short-axis stack has one file per slice position. Input files should be organised as follows:
@@ -134,6 +143,39 @@ python ./src/completeme/segmentation/run_batch_segmentation.py -b ./example/nift
 The resulting segmentations should be identical to the ones in the `./example/segmented-nifti/` and look like this: 
 
 ![Segmentation](images/case_1_collage.gif) 
+
+### Generate dense volumes from sparse segmentations
+
+`run-pipeline.py` automates the generation of dense 3D volumes from the sparse segmentation masks created in the previous step. It handles data cleaning, slice alignment (SSA), and 3D interpolation. Input files should be organized as follows:
+```
+input_folder/
+    ├── patient_001/           # contains .nii.gz masks from segmentation step
+    │   ├── *SA*.nii.gz        
+    │   ├── *4CH*.nii.gz       
+    │   └── ...
+    ├── patient_002/
+    │   └── ...
+```
+
+To generate dense volumes from the provided example segmentations, run:
+
+```bash
+python ./src/completeme/label_completion/run-pipeline.py --all_components --input_dir ./example/segmented-nifti --output_dir ./output_volume --log
+```
+
+The script produces a final 3D reconstruction by interpolating the sparse slices into a continuous volume. The output will be saved in the --output_dir under `3d_dense_volumes/`.
+
+
+Each part of the label completion can be run separately so if you only need to run specific parts of the pipeline, use these individual flags instead of `--all_components:`
+
+`--preprocessing`: Cleans and converts data to multiframe format. \
+`--slice_shifting`: Performs Slice Shift Alignment (SSA).\
+`--volume_conversion`: Converts aligned slices into 3D sparse volumes.\
+`--sparse_to_dense`: Interpolates sparse data into a final dense 3D volume.
+
+The resulting reconstructions should look like this: 
+
+![Segmentation](images/dense_volume.gif) 
 
 ## Contact
 For questions or issues, please open an issue on GitHub or contact [charlene.1.mauger@kcl.ac.uk](charlene.1.mauger@kcl.ac.uk) 
