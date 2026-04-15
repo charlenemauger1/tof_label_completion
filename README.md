@@ -131,7 +131,9 @@ To run the segmentation network on the provided example, run the following comma
 python ./src/completeme/segmentation/run_batch_segmentation.py -b ./example/nifti/ -o ./tof_mask
 ```
 
-The resulting segmentations should be identical to the ones in the `./example/segmented-nifti/`.
+The resulting segmentations should be identical to the ones in the `./example/segmented-nifti/` and look like this: 
+
+![Segmentation](images/case_1_collage.gif) 
 
 ## Contact
 For questions or issues, please open an issue on GitHub or contact [charlene.1.mauger@kcl.ac.uk](charlene.1.mauger@kcl.ac.uk) 
