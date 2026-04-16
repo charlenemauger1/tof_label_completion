@@ -252,7 +252,7 @@ if __name__ == "__main__":
     output_folder = Path(args.output_folder)
     output_folder.mkdir(parents=True, exist_ok=True)
     
-    nifti_segmentation_folder = output_folder / 'labels'
+    nifti_segmentation_folder = output_folder
     nifti_segmentation_folder.mkdir(parents=True, exist_ok=True)
     
     # Configure the logging

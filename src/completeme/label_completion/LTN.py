@@ -96,7 +96,6 @@ class UNet3d(nn.Module):
         final_layer = self.final_layer(decode_block1)
         return final_layer
 
-
 def eval_model(
     model_file: Path,
     csv_path: Path,
@@ -138,6 +137,8 @@ def eval_model(
         for path in image_paths:
             # Load and preprocess
             sitk_img = sitk.ReadImage(str(path))
+
+            # Working
             arr = sitk.GetArrayFromImage(sitk_img).astype(np.float32)  # (D, H, W, C)
             tensor = (
                 torch.from_numpy(arr)
@@ -153,8 +154,10 @@ def eval_model(
             # Post-process: argmax then largest CC per label
             label_pred = np.argmax(output_np, axis=0)  # (D, H, W)
             new_label = np.zeros_like(label_pred, dtype=np.uint8)
-
             for k in label_indices:
+
+                if k == 0 or k > 8:
+                    continue
                 seg = label_pred == k
                 if seg.any():
                     new_label[get_largest_cc(seg)] = k
