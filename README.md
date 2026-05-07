@@ -8,7 +8,24 @@ A two-stage deep learning pipeline for reconstructing dense 3D whole-heart segme
 > - **Sparse input handling** — robust to highly incomplete segmentations
  
 ---
+
+ ## Citation
  
+If you use this code in your research, please cite:
+ 
+```
+Mauger, Charlene et al. "Filling the Gaps: Generating 4D Dense Cardiac Anatomy from
+Sparse CMR for Enhanced Tetralogy of Fallot Assessment." In review.
+```
+
+```
+Xu, Yiyang, et al. "Improved 3D whole heart geometry from sparse CMR slices."
+International Workshop on Statistical Atlases and Computational Models of the Heart.
+Cham: Springer Nature Switzerland, 2024.
+```
+ 
+---
+
 ## Table of Contents
  
 - [Pipeline Overview](#pipeline-overview)
@@ -198,27 +215,6 @@ Instead of `--all_components`, you can run each stage separately:
 | `--slice_shifting` | Perform Slice Shift Alignment (SSA) |
 | `--volume_conversion` | Convert aligned slices into 3D sparse volumes |
 | `--sparse_to_dense` | Interpolate sparse data into a final dense 3D volume |
- 
----
- 
-## Citation
- 
-If you use this code in your research, please cite:
- 
-**1. Main pipeline and results**
- 
-```
-Mauger, Charlene et al. "Filling the Gaps: Generating 4D Dense Cardiac Anatomy from
-Sparse CMR for Enhanced Tetralogy of Fallot Assessment." In review.
-```
- 
-**2. Label completion architecture**
- 
-```
-Xu, Yiyang, et al. "Improved 3D whole heart geometry from sparse CMR slices."
-International Workshop on Statistical Atlases and Computational Models of the Heart.
-Cham: Springer Nature Switzerland, 2024.
-```
  
 ---
  
