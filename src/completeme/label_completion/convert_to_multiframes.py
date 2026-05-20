@@ -158,7 +158,7 @@ def convert_single_frame(
         # Remap labels if filename matches a known mapping key
         lower_name = nifti_file.name.lower()
         for key, mapping in parsed_mappings.items():
-            if re.search(r'\b' + re.escape(key) + r'\b', lower_name):
+            if re.search(r'(?<![a-z0-9])' + re.escape(key) + r'(?![a-z0-9])', lower_name):
                 data = remap_labels(data, mapping).astype(np.float32)
                 break
 
