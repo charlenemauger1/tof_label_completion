@@ -5,6 +5,7 @@ import argparse
 from loguru import logger
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from scipy import ndimage  
+import re
 
 mappings = {
     "sa":     "0:0,1:2,2:1,3:3,4:8",    
@@ -157,7 +158,7 @@ def convert_single_frame(
         # Remap labels if filename matches a known mapping key
         lower_name = nifti_file.name.lower()
         for key, mapping in parsed_mappings.items():
-            if key in lower_name:
+            if re.search(r'\b' + re.escape(key) + r'\b', lower_name):
                 data = remap_labels(data, mapping).astype(np.float32)
                 break
 
