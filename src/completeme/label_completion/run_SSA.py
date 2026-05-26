@@ -528,7 +528,7 @@ def apply_shift(path_data: Path, json_path: Path):
         moving_img_list[0] = moving_img_list[0][..., 0].T
 
         # Replace frame number with f1 (reference frame)
-        ref_slice_name = re.sub(r'f\d+', 'f001', moving_img_name)
+        ref_slice_name = re.sub(r'f(\d+)(?=\.nii\.gz)', 'f001', moving_img_name)
         if ref_slice_name in key_set:
             in_plane_shift = ssa_shift[ref_slice_name]
             apply_affine_transformation(path_data, moving_img_name, in_plane_shift, False)
@@ -561,7 +561,10 @@ def remove_rv_in_la(folder, output_folder):
         sax_data = sax_img.get_fdata()
         affine_sax = sax_img.affine
         corrected_data = sax_data.copy()
-
+        num_overlap_la = 0
+        num_overlap_rv = 0
+        num_overlap_ra_from_lv = 0
+        num_overlap_ra=0
         # Find all RV voxels in SAX
         rv_voxels = np.argwhere(sax_data == RV_LABEL)
         if rv_voxels.size > 0:
@@ -571,8 +574,6 @@ def remove_rv_in_la(folder, output_folder):
             sampled_labels_rv = map_coordinates(fourch_data, vox_4ch_rv, order=0, mode='nearest')
             intersecting_indices_ra = sampled_labels_rv == RA_LABEL
             num_overlap_ra = np.sum(intersecting_indices_ra)
-        else:
-            num_overlap_ra = 0
 
         # Find all LV voxels in SAX
         lv_voxels = np.argwhere(sax_data == LV_LABEL)
@@ -582,12 +583,14 @@ def remove_rv_in_la(folder, output_folder):
             vox_4ch_lv = (inv_affine_4ch @ np.c_[world_coords_lv, np.ones(len(world_coords_lv))].T).T[:, :3].T
             sampled_labels_lv = map_coordinates(fourch_data, vox_4ch_lv, order=0, mode='nearest')
             intersecting_indices_la = sampled_labels_lv == LA_LABEL
-            intersecting_indices_rv = sampled_labels_lv == RV_LABEL
+            intersecting_indices_rv = (sampled_labels_lv == RV_LABEL) | (sampled_labels_lv == RV_MYO_LABEL)
+            intersecting_indices_lv = sampled_labels_lv == RA_LABEL
             num_overlap_la = np.sum(intersecting_indices_la)
             num_overlap_rv = np.sum(intersecting_indices_rv)
-        else:
-            num_overlap_la = 0
-            num_overlap_rv = 0
+
+        if num_overlap_ra_from_lv > 0:
+            corrected_data[corrected_data == LV_LABEL] = 0
+            corrected_data[corrected_data == LV_MYO_LABEL] = 0
 
         if num_overlap_ra > 0:
             corrected_data[corrected_data == RV_LABEL] = 0
