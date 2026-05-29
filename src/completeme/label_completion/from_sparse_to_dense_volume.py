@@ -18,7 +18,6 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import time
 import shutil
 import argparse
@@ -261,11 +260,16 @@ def parse_args() -> argparse.Namespace:
         description="Convert sparse 3D NIfTI segmentations to dense one-hot volumes via LTN.",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument(
-        "-i", "--input",
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "-i", "--input_main_folder",
         type=Path,
-        default=Path("./volume_niftis"),
         help="Folder containing per-case sparse NIfTI volumes.",
+    )
+    group.add_argument(
+        "-s", "--input_subfolder",
+        type=Path,
+        help="Single patient subfolder to process.",
     )
     parser.add_argument(
         "-o", "--output_path",
@@ -294,23 +298,40 @@ if __name__ == "__main__":
         logger.warning("GPU requested but CuPy is not installed. Falling back to CPU.")
         args.use_gpu = False
 
-    assert args.input.exists(), f"Input path not found: {args.input}"
     assert Path(LABEL_COMPLETION_CHECKPOINT_DIR).exists(), (
         f"LTN checkpoint not found: {LABEL_COMPLETION_CHECKPOINT_DIR}"
     )
-
+    assert args.output_path.parent.exists(), (
+        f"Cannot create output directory: parent of {args.output_path} does not exist."
+    )
     args.output_path.mkdir(parents=True, exist_ok=True)
 
-    case_dirs = sorted(p for p in args.input.iterdir() if p.is_dir())
-    logger.info(f"Found {len(case_dirs)} cases.")
+    # Collect patient folders
+    if args.input_main_folder:
+        if not args.input_main_folder.is_dir():
+            logger.error(f"'{args.input_main_folder}' is not a valid directory.")
+            raise SystemExit(1)
+        patient_folders = sorted(
+            f for f in args.input_main_folder.iterdir() if f.is_dir()
+        )
+        logger.info(f"Found {len(patient_folders)} patient folders.")
+    else:
+        if not args.input_subfolder.is_dir():
+            logger.error(f"'{args.input_subfolder}' is not a valid directory.")
+            raise SystemExit(1)
+        patient_folders = [args.input_subfolder]
+
+    if not patient_folders:
+        logger.warning("No patient folders found. Exiting.")
+        raise SystemExit(0)
 
     start = time.time()
-    for case in case_dirs:
+    for case in patient_folders:
         try:
             process_case(case, args.output_path, args.max_workers, args.use_gpu)
         except Exception as e:
             logger.warning(f"Failed: {case.name} — {e}")
 
     logger.success(
-        f"Done. Processed {len(case_dirs)} cases in {time.time() - start:.2f}s."
+        f"Done. Processed {len(patient_folders)} cases in {time.time() - start:.2f}s."
     )
