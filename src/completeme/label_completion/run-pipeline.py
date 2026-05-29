@@ -27,10 +27,10 @@ def process_single_case(case_path: Path, args, output_dir: Path):
             output_folder_preproc.mkdir(parents=True, exist_ok=True) # Ensure output dir exists
             logger.info(f"  Preprocessing: convert_to_multiframes.py for {case_stem}")
             subprocess.run([
-                "python", str(script_dir / "convert_to_multiframes.py"),
-                "-s", str(case_path),
-                "-o", str(output_folder_preproc)
-            ])
+                 "python", str(script_dir / "convert_to_multiframes.py"),
+                 "-s", str(case_path),
+                 "-o", str(output_folder_preproc)
+             ])
 
         if args.slice_shifting:
             # Note: For slice_shifting, it uses the STEM of the case for base_folder
@@ -39,20 +39,20 @@ def process_single_case(case_path: Path, args, output_dir: Path):
             output_folder_aligned.mkdir(parents=True, exist_ok=True) # Ensure output dir exists
             logger.info(f"  Slice Shifting: run_SSA.py (calculate) for {case_stem}")
             subprocess.run([
-                "python", str(script_dir / "run_SSA.py"),
-                "-s", str(base_folder_ssa),
-                "-o", str(output_folder_aligned),
-                "-ed", '1',
-                "-step", "calculate"
-            ])
+                 "python", str(script_dir / "run_SSA.py"),
+                 "-s", str(base_folder_ssa),
+                 "-o", str(output_folder_aligned),
+                 "-ed", '1',
+                 "-step", "calculate"
+             ])
             logger.info(f"  Slice Shifting: run_SSA.py (infer) for {case_stem}")
             subprocess.run([
-                "python", str(script_dir / "run_SSA.py"),
-                "-s", str(base_folder_ssa),
-                "-o", str(output_folder_aligned),
-                "-step", "infer"
-            ])
-
+                 "python", str(script_dir / "run_SSA.py"),
+                 "-s", str(base_folder_ssa),
+                 "-o", str(output_folder_aligned),
+                 "-step", "infer"
+             ])
+        
         if args.volume_conversion:
             # Step 1: Sparse Volume Conversion
             if args.all_components:
@@ -61,29 +61,29 @@ def process_single_case(case_path: Path, args, output_dir: Path):
                 output_folder_sparse_volumes.mkdir(parents=True, exist_ok=True) # Ensure output dir exists
                 logger.info(f"  Volume Conversion: transform_to_volume.py for {case_stem}")
                 subprocess.run([
-                    "python", str(script_dir / "transform_to_volume.py"),
-                    "-s", str(base_folder_sparse),
-                    "-o", str(output_folder_sparse_volumes)
-                ])
+                     "python", str(script_dir / "transform_to_volume.py"),
+                     "-s", str(base_folder_sparse),
+                     "-o", str(output_folder_sparse_volumes)
+                 ])
             else:
                 base_folder_sparse = args.input_dir
                 output_folder_sparse_volumes = args.output_dir
                 subprocess.run([
-                    "python", str(script_dir / "transform_to_volume.py"),
-                    "-i", str(base_folder_sparse),
-                    "-o", str(output_folder_sparse_volumes)
-                ])
+                     "python", str(script_dir / "transform_to_volume.py"),
+                     "-i", str(base_folder_sparse),
+                     "-o", str(output_folder_sparse_volumes)
+                 ])
 
         if args.sparse_to_dense:
             # Step 2: Dense Volume Conversion (uses output from previous step as input)
             if args.all_components:
-                base_folder_dense = output_dir / Path('3d_sparse_volumes') #/ case_stem
+                base_folder_dense = output_dir / Path('3d_sparse_volumes') / case_stem
                 output_folder_dense_volumes = output_dir / Path('3d_dense_volumes')
                 output_folder_dense_volumes.mkdir(parents=True, exist_ok=True) # Ensure output dir exists
                 logger.info(f"  Dense Volume Conversion: from_sparse_to_dense_volume.py for {case_stem}")              
                 subprocess.run([
                     "python", str(script_dir / "from_sparse_to_dense_volume.py"),
-                    "-i", str(base_folder_dense),
+                    "-s", str(base_folder_dense),
                     "-o", str(output_folder_dense_volumes)
                 ])
             else:
@@ -95,7 +95,7 @@ def process_single_case(case_path: Path, args, output_dir: Path):
                     "-i", str(base_folder_dense),
                     "-o", str(output_folder_dense_volumes)
                 ])
-
+        return
     except Exception as e:
         logger.error(f"!!! Error processing case {case_stem}: {e}")
         
@@ -138,7 +138,6 @@ def main():
         return
 
     logger.info(f"Found {len(case_dirs)} cases to process.")
-
     time1 = time.time()
 
     try:
