@@ -14,8 +14,8 @@ A two-stage deep learning pipeline for reconstructing dense 3D whole-heart segme
 If you use this code in your research, please cite:
  
 ```
-Mauger, Charlene et al. "Filling the Gaps: Generating 4D Dense Cardiac Anatomy from
-Sparse CMR for Enhanced Tetralogy of Fallot Assessment." In Press.
+Mauger, Charlène et al. "Filling the Gaps: Generating 4D Dense Cardiac Anatomy from
+Sparse CMR for Enhanced Tetralogy of Fallot Assessment." (https://doi.org/10.1016/j.jocmr.2026.102765) In Press.
 ```
 
 ```
