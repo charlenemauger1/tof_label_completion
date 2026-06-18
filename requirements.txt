@@ -11,3 +11,5 @@ attrdict==2.0.1
 huggingface_hub==1.10.2
 monai==1.5.2
 pytorch-ignite==0.5.2
+simpleitk==2.5.5
+pydicom==3.0.2
