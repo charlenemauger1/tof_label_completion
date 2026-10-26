@@ -201,7 +201,8 @@ def run_inference_on_file(nifti_file: Path, segmentation_folder: Path, preloaded
         None. Saves the segmentation mask to disk as a uint8 NIfTI file.
     """
     # Resolve the parent folder and identify the CMR view from the file path
-    patient_folder = nifti_file.resolve().parent
+    nifti_file = nifti_file.resolve()
+    patient_folder = nifti_file.parent
 
     image_view = identify_view_from_path(patient_folder / nifti_file)
     if not image_view:
